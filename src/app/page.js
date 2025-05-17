@@ -1,72 +1,52 @@
-"use client";
-import { ethers } from "ethers";
+"use client"; // This MUST be the first line
+
 import { useEffect, useState } from "react";
+import { ethers } from "ethers";
+import { abi, contractAddress } from "./constant";
+
+
 
 export default function Home() {
-  const provider = new ethers.JsonRpcProvider("https://ethereum-sepolia-rpc.publicnode.com");
-
   const [account, setAccount] = useState(null);
-  const [balance, setBalance] = useState(null);
-  const [blockNumber, setBlockNumber] = useState(null);
-  const [timestamp, setTimestamp] = useState(null);
-  const [chainId, setChainId] = useState(null);
-  const [networkName, setNetworkName] = useState(null);
+  const [provider, setProvider] = useState(null);
   const connectWallet = async () => {
     if (typeof window !== "undefined" && typeof window.ethereum !== "undefined") {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      // const provider2 = new ethers.JsonRpcProvider("https://ethereum-sepolia-rpc.publicnode.com");
+      // const provider3 = new ethers.JsonRpcApiProvider("https://sepolia.infura.io/v3/2de477c3b1b74816ae5475da6d289208")
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(contractAddress, abi, signer);
       try {
         const accounts = await window.ethereum.request({
           method: "eth_requestAccounts",
         });
-        setAccount(accounts[0]);
+        const chainId = await window.ethereum.request({
+          method: "eth_chainId",
+        });
 
-        const rawBalance = await provider.getBalance(accounts[0]);
-        setBalance(ethers.formatEther(rawBalance));
+        // get the chainid in number format
+        const chainIdNumber = parseInt(chainId, 16);
+        console.log("Connected to chain ID:", chainIdNumber);
+        console.log("Connected to account:", accounts[0]);
+        console.log("contract:", contract);
+        setProvider(provider);
+        setAccount(accounts[0]);
       } catch (err) {
-        console.error("Connection error:", err);
+        console.error("User rejected connection", err);
       }
     } else {
       alert("Please install MetaMask!");
     }
   };
 
-  useEffect(() => {
-    const fetchBlockchainData = async () => {
-      try {
-        // Network info
-        const network = await provider.getNetwork();
-        setChainId(network.chainId);
-        setNetworkName(network.name);
-
-        // Latest block
-        const block = await provider.getBlock("latest");
-        setBlockNumber(block.number);
-        setTimestamp(new Date(block.timestamp * 1000).toLocaleString());
-      } catch (err) {
-        console.error("Error fetching blockchain data", err);
-      }
-    };
-
-    fetchBlockchainData();
-  }, []);
-
   return (
-    <div style={{ padding: "2rem", fontFamily: "monospace" }}>
-      <h1>🔗 Blockchain Info (Sepolia)</h1>
-
-      <p><strong>Chain ID:</strong> {chainId ?? "Loading..."}</p>
-      <p><strong>Network Name:</strong> {networkName ?? "Loading..."}</p>
-      <p><strong>Block Number:</strong> {blockNumber ?? "Loading..."}</p>
-      <p><strong>Block Timestamp:</strong> {timestamp ?? "Loading..."}</p>
-      <hr />
-
+    <main style={{ padding: "2rem" }}>
+      <h1>Hello in frontend</h1>
       {account ? (
-        <>
-          <p><strong>Connected Account:</strong> {account}</p>
-          <p><strong>ETH Balance:</strong> {balance ?? "Loading..."} ETH</p>
-        </>
+        <p>Connected: {account}</p>
       ) : (
         <button onClick={connectWallet}>Connect MetaMask</button>
       )}
-    </div>
+    </main>
   );
 }
