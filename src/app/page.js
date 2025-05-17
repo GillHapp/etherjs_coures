@@ -89,6 +89,46 @@ export default function Home() {
     }
   };
 
+
+  const depositEther = async () => {
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(contractAddress, abi, signer);
+
+      const amountInEther = "0.01";
+      const amountInWei = ethers.parseEther(amountInEther);
+
+      const tx = await contract.deposit({
+        value: amountInWei, // 👈 This sends ETH
+      });
+
+      console.log("⛏️ Mining transaction...");
+      const receipt = await tx.wait();
+      console.log("✅ Transaction mined:", receipt.transactionHash);
+
+      // Optional: check for event in logs
+      const event = receipt.logs
+        .map((log) => {
+          try {
+            return contract.interface.parseLog(log);
+          } catch {
+            return null;
+          }
+        })
+        .find((parsed) => parsed && parsed.name === "EtherDeposited");
+
+      if (event) {
+        const { from, amount } = event.args;
+        console.log(`📥 Deposit event: ${from} sent ${ethers.formatEther(amount)} ETH`);
+      } else {
+        console.log("❌ No EtherDeposited event found.");
+      }
+    } catch (err) {
+      console.error("❌ Error during deposit:", err);
+    }
+  };
+
   // register user 
 
   const registerUser = async () => {
@@ -151,6 +191,7 @@ export default function Home() {
           onChange={(e) => setAge(e.target.value)}
         />
         <button onClick={registerUser}>Register</button>
+        <button onClick={depositEther}>depoiteETH</button>
       </div>
     </main>
   );
