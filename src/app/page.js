@@ -9,6 +9,8 @@ import { abi, contractAddress } from "./constant";
 export default function Home() {
   const [account, setAccount] = useState(null);
   const [provider, setProvider] = useState(null);
+  const [name, setName] = useState("");
+  const [age, setAge] = useState("");
   const connectWallet = async () => {
     if (typeof window !== "undefined" && typeof window.ethereum !== "undefined") {
       const provider = new ethers.BrowserProvider(window.ethereum);
@@ -39,6 +41,27 @@ export default function Home() {
     }
   };
 
+  // register user 
+
+  const registerUser = async () => {
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+
+    const contract = new ethers.Contract(contractAddress, abi, signer);
+    try {
+      const tx = await contract.registerUser(name, parseInt(age));
+      await tx.wait();
+      console.log("Transaction hash:", tx.hash);
+      console.log("User registered:", name, age);
+    }
+    catch (err) {
+      console.error("Error registering user:", err);
+    }
+
+
+  }
+
   return (
     <main style={{ padding: "2rem" }}>
       <h1>Hello in frontend</h1>
@@ -47,6 +70,21 @@ export default function Home() {
       ) : (
         <button onClick={connectWallet}>Connect MetaMask</button>
       )}
+      <div style={{ marginTop: "1rem" }}>
+        <input
+          type="text"
+          placeholder="Enter name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          type="number"
+          placeholder="Enter age"
+          value={age}
+          onChange={(e) => setAge(e.target.value)}
+        />
+        <button onClick={registerUser}>Register</button>
+      </div>
     </main>
   );
 }
