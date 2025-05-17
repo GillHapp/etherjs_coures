@@ -11,6 +11,54 @@ export default function Home() {
   const [provider, setProvider] = useState(null);
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
+  const [events, setEvents] = useState([]);
+
+
+  useEffect(() => {
+    const fetchPastEventsAndListen = async () => {
+      if (!account || !provider) return;
+
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(contractAddress, abi, signer);
+
+      // 1️⃣ Fetch past UserRegistered events
+      try {
+        const filter = contract.filters.UserRegistered("0x78c36eD4B3cB79Cb78b187fDAF178DF0C36e5016"); // no args = all users
+        const events = await contract.queryFilter(filter, 0, "latest");
+
+        console.log("📦 Past Events:");
+        events.forEach((event) => {
+          const { user, name, age } = event.args;
+          console.log("🕓", user, name, age.toString());
+          setEvents((prev) => [
+            ...prev,
+            `User: ${user}, Name: ${name}, Age: ${age.toString()}`
+          ]);
+        });
+      } catch (err) {
+        console.error("❌ Error fetching past events:", err);
+      }
+
+      // 2️⃣ Live listener
+      contract.removeAllListeners("UserRegistered");
+
+      contract.on("UserRegistered", (user, name, age) => {
+        console.log("📢 New UserRegistered event:", user, name, age.toString());
+        setEvents((prev) => [
+          ...prev,
+          `User: ${user}, Name: ${name}, Age: ${age.toString()}`
+        ]);
+      });
+
+      console.log("🎧 Event listener added for UserRegistered");
+    };
+
+    fetchPastEventsAndListen();
+  }, [account, provider]);
+  // re-run only when account/provider changes
+
+
+
   const connectWallet = async () => {
     if (typeof window !== "undefined" && typeof window.ethereum !== "undefined") {
       const provider = new ethers.BrowserProvider(window.ethereum);
@@ -54,6 +102,25 @@ export default function Home() {
       await tx.wait();
       console.log("Transaction hash:", tx.hash);
       console.log("User registered:", name, age);
+      const event = tx.logs
+        .map((log) => {
+          try {
+            return contract.interface.parseLog(log);
+          } catch {
+            return null;
+          }
+        })
+        .filter((parsed) => parsed && parsed.name === "UserRegistered")[0];
+
+      if (event) {
+        const { user, name, age } = event.args;
+        console.log("🟢 Event Emitted:");
+        console.log("User:", user);
+        console.log("Name:", name);
+        console.log("Age:", age.toString());
+      } else {
+        console.log("❌ No UserRegistered event found in logs.");
+      }
     }
     catch (err) {
       console.error("Error registering user:", err);
